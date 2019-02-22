@@ -1,0 +1,156 @@
+import random
+random.seed(123)
+
+import numpy
+from pandas import read_excel
+#make sure url is a download link, not a share link!
+url = "https://drive.google.com/uc?export=download&id=1n9tWOUjAA3bq-GzoCV9p5JFpToN_KBNv"
+dataframe = read_excel(url, header=0)
+dataset = dataframe.values
+print(dataset)
+import pandas as pd
+
+data = dataset
+data = pd.DataFrame(dataset)
+data.columns=['Month','Q0','Q1','Q2pt5','Q5','Q10','Q25','Q50','Q75','Q90','Q95','Q97pt5','Q99','Q100','STNAME','CTYNAME','POPESTIMATE2015']
+data.head()
+
+#importing required libraries
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn import linear_model
+
+# Linear regression model
+
+df_1 = data
+df_1 = pd.DataFrame(df_1) # load the dataset as a pandas data frame
+df_1.head()
+x_1 = df_1.iloc[:,1:16]
+y_1 = df_1.POPESTIMATE2015 # define the target variable (dependent variable) as y
+
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(x_1, y_1, test_size=0.2)
+
+
+model_1 = linear_model.LinearRegression()
+model_1.fit(x_train.iloc[:,1:13],y_train) # training the model
+
+pred_test_1 = model_1.predict(x_test.iloc[:,1:13])## predicting on test data
+ori_test_1 = y_test
+
+pred_train_1 = model_1.predict(x_train.iloc[:,1:13])## predicting on train data
+ori_train_1 = y_train
+
+
+print (model_1.intercept_, model_1.coef_)
+
+x_test['AE1'] = abs(pred_test_1-ori_test_1)
+
+a = x_test.loc[x_test['STNAME']=='California']
+b = x_test.loc[x_test['STNAME']=='Texax']
+c = x_test.loc[x_test['STNAME']=='Florida']
+
+frames = [a,b,c]
+abc = pd.concat(frames)
+
+plt.boxplot(np.log(abc.AE1.astype(float))) # boxplot of absolute errors
+
+x_train
+x_test
+
+df_lm_50 = pd.concat([x_train, x_test])
+len(df_lm_50)
+
+ans_1 = df_lm_50.sort_values(by=['AE1'])
+ans_1.tail(50)
+
+error_1_train = abs(pred_train_1-ori_train_1)
+plt.boxplot(np.log(error_1_train.astype(float))) # boxplot of error in train
+
+error_1_test = abs(pred_test_1-ori_test_1)
+plt.boxplot(np.log(error_1_test.astype(float))) # boxplot of error in train
+
+# mean absolute percentage error of test
+MAPE_TEST_1 = np.mean((abs(pred_test_1-ori_test_1)/abs(ori_test_1))*100)
+print(MAPE_TEST_1)
+MAPE_TEST_1
+
+# mean absolute error of test
+MAE_TEST_1 = np.mean(abs(pred_test_1-ori_test_1))
+print(MAE_TEST_1)
+MAE_TEST_1
+
+
+# mean absolute percentage error of train
+MAPE_TRAIN_1 = np.mean((abs(pred_train_1-ori_train_1)/abs(ori_train_1))*100)
+print(MAPE_TRAIN_1)
+
+# mean absolute error of train
+MAE_TRAIN_1 = np.mean(abs(pred_train_1-ori_train_1))
+print(MAE_TRAIN_1)
+
+# random forest model
+
+from sklearn.ensemble import RandomForestRegressor
+rf = RandomForestRegressor(n_estimators = 500, random_state = 0)
+# Train the model on training data
+rf.fit(x_train.iloc[:,1:13],y_train)
+# predicting on test data
+
+pred_test_rf = rf.predict(x_test.iloc[:,1:13]) ## predicting on test data
+ori_test_rf = y_test
+
+pred_train_rf = rf.predict(x_train.iloc[:,1:13])## predicting on train data
+ori_train_rf = y_train
+
+x_test['AE2'] = abs(pred_test_rf-ori_test_rf)
+
+a_rf = x_test.loc[x_test['STNAME']=='California']
+b_rf = x_test.loc[x_test['STNAME']=='Texax']
+c_rf= x_test.loc[x_test['STNAME']=='Florida']
+
+frames = [a_rf,b_rf,c_rf]
+abc_rf = pd.concat(frames)
+
+plt.boxplot(abc_rf.AE2.astype(float)) # boxplot of absolute errors
+
+# gbm model
+
+from sklearn.ensemble import GradientBoostingRegressor
+
+gbm = GradientBoostingRegressor()
+gbm.fit(x_train.iloc[:,1:13], y_train)
+
+
+pred_test_gbm = gbm.predict(x_test.iloc[:,1:13]) ## predicting on test data
+ori_test_gbm = y_test
+
+pred_train_gbm = gbm.predict(x_train.iloc[:,1:13])## predicting on train data
+ori_train_gbm = y_train
+
+x_1 = df_1.iloc[:,2:14]
+y_1 = df_1.POPESTIMATE2015 
+
+from sklearn.model_selection import KFold 
+kf = KFold(n_splits=10)
+kf.get_n_splits(x_1) 
+
+KFold(n_splits=10,random_state=None,shuffle=False)
+
+from sklearn.linear_model import LinearRegression # for linear regression model
+mae=0
+regr =  linear_model.LinearRegression()
+for train_index, test_index in kf.split(x_1):
+  x_train = x_1.loc[train_index]
+  y_train = y_1.loc[train_index]
+  x_test = x_1.loc[test_index]
+  y_test = y_1.loc[test_index]
+  regr.fit(x_train,y_train) # training the model
+  
+  y_pred10fold = regr.predict(x_test)
+  
+  mae=np.mean(np.abs(y_test-y_pred10fold))+mae
+
+lm_10_fold =mae/10
+
+lm_10_fold
